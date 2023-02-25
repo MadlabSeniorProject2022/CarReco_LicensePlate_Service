@@ -30,27 +30,20 @@ def load_model(path):
 
 wpod_net_path = "wpod-net.json"
 wpod_net = load_model(wpod_net_path)
+# load upscale
+sr = cv2.dnn_superres.DnnSuperResImpl_create()
 
-def scale_up(file_path):
-    if not os.path.exists("./up_scale"):
-        os.mkdir("/up_scale")
-    sr = cv2.dnn_superres.DnnSuperResImpl_create()
-
+def scale_up(img):
     modelPath = 'LapSRN_x8.pb'
-
-    img = cv2.imread(file_path)
-
     sr.readModel(modelPath)
-    sr.setModel("lapsrn", int(512/img.size[2]))
-
-    
+    sr.setModel("lapsrn", 8)
     img = sr.upsample(img)
     return img
 
 
 def preprocess_image(image_path,resize=False):
-    img = scale_up(image_path)
-
+    img = cv2.imread(image_path)
+    img = scale_up(img)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img / 255
     if resize:
@@ -70,7 +63,7 @@ def run_flow(image_path):
     if (len(LpImg)): #check if there is at least one license image
         # Scales, calculates absolute values, and converts the result to 8-bit.
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
-        
+        #plate_image = scale_up(plate_image)
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray,(5,5),0)
@@ -80,6 +73,6 @@ def run_flow(image_path):
         
         kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
         thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
-        
-        extractedInformation = pytesseract.image_to_string(thre_mor, config='tessdata-dir /content/drive/MyDrive/Plate_detect_and_recognize/tessdata --psm 6 -oem 1 -c tessedit_char_whitelist=กขฆงจฉชฌญฎฐธพภวศษสฒณตถบปผยรลนฬอฮทมฟ0123456789')
+        extractedInformation = pytesseract.image_to_string(thre_mor)
+        #extractedInformation = pytesseract.image_to_string(binary, config='tessdata-dir /content/drive/MyDrive/Plate_detect_and_recognize/tessdata --psm 6 -oem 1 -c tessedit_char_whitelist=กขฆงจฉชฌญฎฐธพภวศษสฒณตถบปผยรลนฬอฮทมฟ0123456789')
         return extractedInformation
